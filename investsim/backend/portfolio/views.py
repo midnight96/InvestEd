@@ -26,10 +26,12 @@ class PortfolioDetailView(APIView):
         # enrich each holding with live price + P&L so the frontend doesn't
         # have to make N extra requests
         total_holdings_value = Decimal('0')
+        from market.services import get_asset_name
         for h in data['holdings']:
             price = get_price(h['symbol'], h['asset_type'])
             qty = Decimal(str(h['quantity']))
             avg_price = Decimal(str(h['avg_price']))
+            h['name'] = get_asset_name(h['symbol'], h['asset_type'])
             h['current_price'] = price
             h['current_value'] = float(price * qty)
             h['pnl'] = float((price - avg_price) * qty)
@@ -47,7 +49,11 @@ class TransactionHistoryView(APIView):
 
     def get(self, request):
         txns = Transaction.objects.filter(user=request.user)
-        return Response(TransactionSerializer(txns, many=True).data)
+        data = TransactionSerializer(txns, many=True).data
+        from market.services import get_asset_name
+        for t in data:
+            t['name'] = get_asset_name(t['symbol'], t['asset_type'])
+        return Response(data)
 
 
 class TradeView(APIView):

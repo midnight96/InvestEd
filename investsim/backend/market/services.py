@@ -135,3 +135,67 @@ def get_price(symbol: str, asset_type: str) -> Decimal | None:
     if asset_type == 'mutual_fund':
         return get_mutual_fund_nav(symbol)
     return get_stock_price(symbol)
+
+
+def get_asset_name(symbol: str, asset_type: str) -> str:
+    cache_key = f"asset_name_{symbol}_{asset_type}"
+    cached_name = cache.get(cache_key)
+    if cached_name:
+        return cached_name
+
+    name = symbol
+
+    found = False
+    if asset_type == 'stock':
+        for s in CURATED_STOCKS:
+            if s['symbol'] == symbol:
+                name = s['name']
+                found = True
+                break
+    else:
+        for m in CURATED_MUTUAL_FUNDS:
+            if m['symbol'] == symbol:
+                name = m['name']
+                found = True
+                break
+
+    if not found:
+        if asset_type == 'mutual_fund':
+            schemes = cache.get('mfapi_scheme_catalogue')
+            if schemes:
+                for scheme in schemes:
+                    if str(scheme['schemeCode']) == symbol:
+                        name = scheme['schemeName']
+                        found = True
+                        break
+            if not found:
+                try:
+                    resp = requests.get(f'{MFAPI_BASE}/{symbol}', timeout=3)
+                    if resp.status_code == 200:
+                        meta = resp.json().get('meta', {})
+                        scheme_name = meta.get('scheme_name')
+                        if scheme_name:
+                            name = scheme_name
+                            found = True
+                except Exception:
+                    pass
+        else:
+            if settings.FINNHUB_API_KEY:
+                try:
+                    resp = requests.get(
+                        f'{FINNHUB_BASE}/search',
+                        params={'q': symbol, 'token': settings.FINNHUB_API_KEY},
+                        timeout=3
+                    )
+                    if resp.status_code == 200:
+                        results = resp.json().get('result', [])
+                        for item in results:
+                            if item.get('symbol') == symbol:
+                                name = item.get('description') or symbol
+                                found = True
+                                break
+                except Exception:
+                    pass
+
+    cache.set(cache_key, name, 60 * 60 * 24 * 7)
+    return name

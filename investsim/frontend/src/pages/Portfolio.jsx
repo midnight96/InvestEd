@@ -104,9 +104,9 @@ export default function Portfolio() {
               </div>
               {portfolio.holdings.map((h) => (
                 <div key={h.symbol} className="grid grid-cols-[1.4fr_.6fr_.9fr_.7fr] gap-2 items-center py-3 px-2 border-b border-white/5 text-sm">
-                  <div>
-                    <p className="font-medium text-white">{h.symbol}</p>
-                    <p className="text-xs text-slate-500">{assetLabel(h.asset_type)} · avg ₹{Number(h.avg_price).toFixed(2)}</p>
+                  <div className="min-w-0">
+                    <p className="font-medium text-white truncate" title={h.name || h.symbol}>{h.name || h.symbol}</p>
+                    <p className="text-xs text-slate-500 truncate">{h.symbol} · {assetLabel(h.asset_type)} · avg ₹{Number(h.avg_price).toFixed(2)}</p>
                   </div>
                   <p className="text-slate-300">{h.quantity}</p>
                   <p className="text-white">{formatMoney(h.current_value)}</p>
@@ -142,8 +142,8 @@ export default function Portfolio() {
                         {isBuy ? 'BUY' : 'SELL'}
                       </span>
                       <div className="min-w-0">
-                        <p className="font-medium text-white truncate">{t.symbol}</p>
-                        <p className="text-xs text-slate-500">{assetLabel(t.asset_type)} · {formatDate(t.timestamp)}</p>
+                        <p className="font-medium text-white truncate" title={t.name || t.symbol}>{t.name || t.symbol}</p>
+                        <p className="text-xs text-slate-500 truncate">{t.symbol} · {assetLabel(t.asset_type)} · {formatDate(t.timestamp)}</p>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
