@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -33,7 +33,7 @@ class LeaderboardView(APIView):
     Ranks users by portfolio RETURN % (not raw value) so everyone starts fair
     regardless of when they joined.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request):
         rows = []

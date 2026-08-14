@@ -3,8 +3,10 @@ import { useAuth } from '../context/AuthContext';
 
 const links = [
   ['⌂', 'Dashboard', '/dashboard'],
+  ['☰', 'Portfolio', '/portfolio'],
   ['↗', 'Market', '/market'],
   ['◈', 'Lessons', '/lessons'],
+  ['🤖', 'AI Coach', '/coach'],
   ['♙', 'Leaderboard', '/leaderboard'],
 ];
 

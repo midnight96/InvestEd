@@ -1,5 +1,5 @@
 from rest_framework.generics import ListAPIView, RetrieveAPIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -10,13 +10,13 @@ from .serializers import LessonListSerializer, LessonDetailSerializer, QuizSubmi
 
 
 class LessonListView(ListAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     queryset = Lesson.objects.all()
     serializer_class = LessonListSerializer
 
 
 class LessonDetailView(RetrieveAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     queryset = Lesson.objects.all()
     serializer_class = LessonDetailSerializer
 
