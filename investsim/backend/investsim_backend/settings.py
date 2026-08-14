@@ -109,13 +109,7 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
 
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    # Vite uses the next available port when another dev server is open.
-    'http://localhost:5174',
-    'http://127.0.0.1:5174',
-]
+CORS_ALLOW_ALL_ORIGINS = True
 
 STARTING_CASH_BALANCE = 100000  # virtual rupees given to every new user
 
