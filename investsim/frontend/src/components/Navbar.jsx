@@ -5,7 +5,7 @@ const links = [
   ['⌂', 'Dashboard', '/dashboard'],
   ['☰', 'Portfolio', '/portfolio'],
   ['↗', 'Market', '/market'],
-  ['◈', 'Lessons', '/lessons'],
+  ['🎲', 'Trivia & Challenges', '/lessons'],
   ['🤖', 'AI Coach', '/coach'],
   ['♙', 'Leaderboard', '/leaderboard'],
 ];
