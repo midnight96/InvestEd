@@ -23,7 +23,7 @@ export default function Login() {
       await login(username, password);
       navigate('/dashboard');
     } catch (err) {
-      setError('Invalid username or password.');
+      setError('No account exists? Sign up instead, or verify your credentials.');
     }
   }
 
@@ -37,7 +37,16 @@ export default function Login() {
     <section className="login-form-panel">
       <header className="login-form-header"><Link to="/" className="login-brand"><span>i</span>InvestEd</Link><Link to="/register">Create account</Link></header>
       <form className="login-form" onSubmit={handleSubmit}>
-        <div><p className="login-kicker">WELCOME BACK</p><h2>Sign in</h2><p className="login-intro">Continue your investing journey.</p></div>
+        <div>
+          <p className="login-kicker">WELCOME BACK</p>
+          <h2>Sign in</h2>
+          <p className="login-intro">
+            Continue your investing journey.
+            <span style={{ display: 'block', marginTop: '6px', color: '#ff593c', fontWeight: 'bold', fontSize: '12px' }}>
+              ⚠️ No account exists? Sign up/Register instead!
+            </span>
+          </p>
+        </div>
         <label>Username<input placeholder="Email or username" value={username} onChange={(e) => setUsername(e.target.value)} required /></label>
         <label>Password<input type="password" placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
         {error && <p className="login-error">{error}</p>}
