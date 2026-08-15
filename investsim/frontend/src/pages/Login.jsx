@@ -42,8 +42,8 @@ export default function Login() {
           <h2>Sign in</h2>
           <p className="login-intro">
             Continue your investing journey.
-            <span style={{ display: 'block', marginTop: '6px', color: '#ff593c', fontWeight: 'bold', fontSize: '12px' }}>
-              ⚠️ No account exists? Sign up/Register instead!
+            <span style={{ display: 'block', marginTop: '6px', fontSize: '12px', color: '#77808b' }}>
+              ⚠️ No account exists? <Link to="/register" style={{ color: '#ff593c', fontWeight: 'bold', textDecoration: 'underline' }}>Sign up/Register instead</Link>!
             </span>
           </p>
         </div>
