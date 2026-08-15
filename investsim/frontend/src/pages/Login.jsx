@@ -30,7 +30,7 @@ export default function Login() {
   return <main className="login-showcase">
     <section className="login-story">
       <div className="story-topline">Smart investing, made simple — learn by doing.</div>
-      <div className="story-copy"><span className="story-rings" /><h1>Manage<br />your money</h1><p>Build confidence with a portfolio that is always yours to explore.</p></div>
+      <div className="story-copy"><span className="story-rings" /><h1>Manage<br />your money</h1><p> </p></div>
       <img src={investingPhone} className="login-phone" alt="A phone showing an investing portfolio" />
     </section>
 
