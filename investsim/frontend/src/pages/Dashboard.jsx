@@ -13,6 +13,7 @@ function MiniLine({ positive = true }) {
 export default function Dashboard() {
   const [portfolio, setPortfolio] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -22,12 +23,15 @@ export default function Dashboard() {
         setProfile(g.data);
       } catch (error) {
         console.error('Failed to load dashboard', error);
+        setError('Failed to load dashboard data. Please try again.');
       }
     }
     load();
   }, []);
 
   const invested = useMemo(() => portfolio?.holdings?.reduce((sum, h) => sum + Number(h.avg_price) * Number(h.quantity), 0) || 0, [portfolio]);
+  
+  if (error) return <div className="dashboard-page error-state" style={{ padding: '2rem', color: '#ef4444' }}>{error}</div>;
   if (!portfolio || !profile) return <div className="dashboard-page loading-state">Loading your investor dashboard...</div>;
 
   const totalPnl = portfolio.holdings.reduce((sum, h) => sum + Number(h.pnl), 0);
