@@ -4,9 +4,12 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 const client = axios.create({ baseURL: API_BASE });
 
-// Attach the JWT access token (kept in localStorage for simplicity in this
-// prototype) to every outgoing request.
+// Attach the JWT access token to every outgoing request.
 client.interceptors.request.use((config) => {
+  // Prevent Axios from stripping the /api subpath by removing the leading slash from the request URL
+  if (config.url && config.url.startsWith('/')) {
+    config.url = config.url.substring(1);
+  }
   const token = localStorage.getItem('access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

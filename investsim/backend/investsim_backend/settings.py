@@ -109,7 +109,13 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    "https://investted.netlify.app",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://investted.netlify.app",
+]
 
 STARTING_CASH_BALANCE = 100000  # virtual rupees given to every new user
 
