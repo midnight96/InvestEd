@@ -92,7 +92,7 @@ export default function Coach() {
   }
 
   return (
-    <div className="app-page flex flex-col h-screen" style={{ paddingBottom: '20px' }}>
+    <div className="app-page coach-page flex flex-col" style={{ paddingBottom: '0' }}>
       {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b border-[#292929] mb-4">
         <div>

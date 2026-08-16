@@ -6,7 +6,7 @@ A full-stack web application where students learn how to invest using **real mar
 
 ## 🚀 Live Deployments
 
-* **Frontend**: Hosted on [Netlify](https://investted.netlify.app)
+* **Frontend**: Hosted on [Netlify](https://invested.netlify.app)
 * **Backend API**: Hosted on [Railway](https://gentle-reprieve-production-44f7.up.railway.app)
 * **Database**: Managed Serverless PostgreSQL on [Neon](https://neon.tech)
 
@@ -48,7 +48,7 @@ A full-stack web application where students learn how to invest using **real mar
 - **Live-ish Market Data** — Stocks (via Finnhub, or a mock fallback) and Indian mutual fund NAVs (via `mfapi.in`, no key needed) — see `backend/market/services.py`.
 - **Trading Engine** — Atomic buy/sell logic with P&L tracking — see `backend/portfolio/views.py`.
 - **Trivia & Challenges** — Gamified stock market trivia and trading challenges with difficulty levels giving users XP to level up — see `backend/lessons/`.
-- **Gamification** — XP, levels, badges, and leaderboard — see `backend/gamification/`.
+- **Gamification** — XP, levels, badges, and leaderboard — see `backend/gamification/`
 
 ---
 
