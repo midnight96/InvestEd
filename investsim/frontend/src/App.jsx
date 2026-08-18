@@ -16,12 +16,20 @@ function Home() {
   return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
 }
 
+/* Offsets page content past the fixed desktop rail once signed in. */
+function Shell({ children }) {
+  const { isAuthenticated } = useAuth();
+  return (
+    <div className={`min-h-screen ${isAuthenticated ? 'lg:pl-[248px]' : ''}`}>{children}</div>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <HashRouter>
-        <div className="min-h-screen">
-          <Navbar />
+        <Navbar />
+        <Shell>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
@@ -33,7 +41,7 @@ export default function App() {
             <Route path="/coach" element={<ProtectedRoute><Coach /></ProtectedRoute>} />
             <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
           </Routes>
-        </div>
+        </Shell>
       </HashRouter>
     </AuthProvider>
   );

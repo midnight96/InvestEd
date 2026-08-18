@@ -1,205 +1,227 @@
 import { useState, useRef, useEffect } from 'react';
+import { Bot, Lightbulb, SendHorizontal, Sparkles } from 'lucide-react';
 import client from '../api/client';
+import { Alert } from '../components/ui';
+
+const SUGGESTIONS = [
+  'Explain compound interest to a 15-year-old.',
+  'What is the difference between a growth fund and a dividend stock?',
+  'How does inflation affect my savings over time?',
+  'Give me an analogy for diversification.',
+];
+
+const GREETING = {
+  role: 'model',
+  text: "Hi! I'm your **InvestEd AI Coach**. Ask me anything about stock markets, mutual funds, budgeting, inflation, or how to diversify a portfolio. What would you like to learn today?",
+};
+
+/** Minimal inline markdown: **bold** plus `-`/`*` bullets. */
+function MessageBody({ text }) {
+  if (!text) return null;
+  const lines = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').split('\n');
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <span key={idx} className="h-1" />;
+        if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+          return (
+            <span key={idx} className="flex gap-2 leading-relaxed">
+              <span aria-hidden="true" className="mt-[7px] size-1.5 shrink-0 rounded-full bg-coin" />
+              <span dangerouslySetInnerHTML={{ __html: trimmed.slice(2) }} />
+            </span>
+          );
+        }
+        return (
+          <p key={idx} className="leading-relaxed" dangerouslySetInnerHTML={{ __html: trimmed }} />
+        );
+      })}
+    </div>
+  );
+}
 
 export default function Coach() {
-  const [messages, setMessages] = useState([
-    {
-      role: 'model',
-      text: "👋 Hi! I'm your **InvestEd AI Coach**. You can ask me any question about stock markets, mutual funds, personal budgeting, inflation, or how to diversify your portfolio. What would you like to learn today? 🚀"
-    }
-  ]);
+  const [messages, setMessages] = useState([GREETING]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const chatEndRef = useRef(null);
 
-  // Suggestions that users can click to ask instantly
-  const suggestions = [
-    "Explain compound interest to a 15-year-old.",
-    "What is the difference between a growth fund and a dividend stock?",
-    "How does inflation affect my savings over time?",
-    "Give me an analogy for diversification."
-  ];
-
-  // Auto scroll to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
   async function handleSend(textToSend) {
     const text = textToSend || inputText;
-    if (!text.trim()) return;
+    if (!text.trim() || loading) return;
 
     if (!textToSend) setInputText('');
     setError('');
 
-    // Add user message to history
-    const userMessage = { role: 'user', text };
-    const updatedMessages = [...messages, userMessage];
+    const updatedMessages = [...messages, { role: 'user', text }];
     setMessages(updatedMessages);
     setLoading(true);
 
     try {
-      // API call to the backend
-      const response = await client.post('/lessons/chatbot/', {
-        messages: updatedMessages
-      });
-
-      if (response.data && response.data.text) {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'model', text: response.data.text }
-        ]);
+      const response = await client.post('/lessons/chatbot/', { messages: updatedMessages });
+      if (response.data?.text) {
+        setMessages((prev) => [...prev, { role: 'model', text: response.data.text }]);
       } else {
         setError('Received an empty response from the AI coach.');
       }
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.error || 'Failed to contact your AI Coach. Please try again.');
+      setError(
+        err.response?.data?.error || 'Failed to contact your AI Coach. Please try again.',
+      );
     } finally {
       setLoading(false);
     }
   }
 
   function handleKeyDown(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  }
-
-  // Simple Markdown parsing helper
-  function renderMessageText(text) {
-    if (!text) return '';
-    // Replace **text** with <strong>text</strong>
-    let html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
-    // Split by newlines to handle lists and paragraph breaks
-    const lines = html.split('\n');
-    return lines.map((line, idx) => {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
-        return (
-          <li key={idx} className="ml-4 list-disc my-1" dangerouslySetInnerHTML={{ __html: trimmed.slice(2) }} />
-        );
-      }
-      return trimmed ? (
-        <p key={idx} className="my-1.5 leading-relaxed" dangerouslySetInnerHTML={{ __html: trimmed }} />
-      ) : (
-        <div key={idx} className="h-2" />
-      );
-    });
+    // Don't submit while a CJK IME is composing the current character.
+    if (e.key !== 'Enter' || e.shiftKey || e.nativeEvent.isComposing || e.keyCode === 229) return;
+    e.preventDefault();
+    handleSend();
   }
 
   return (
-    <div className="app-page coach-page flex flex-col" style={{ paddingBottom: '0' }}>
-      {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-[#292929] mb-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
-            <span>🤖</span> AI Financial Coach
-          </h1>
-          <p className="text-xs text-[#777] mt-1">Your friendly personal assistant for learning smart investing</p>
+    <main className="mx-auto flex h-[calc(100svh-61px)] w-full max-w-[1440px] flex-col px-5 pt-5 pb-[76px] lg:h-screen lg:px-10 lg:py-8">
+      {/* ── Header ───────────────────────────────────────────────────── */}
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-coin text-coin-ink shadow-[0_3px_0_0_#a37200]">
+            <Bot className="size-5" aria-hidden="true" />
+          </span>
+          <div>
+            <h1 className="font-display text-xl font-extrabold text-foreground">
+              AI Financial Coach
+            </h1>
+            <p className="text-xs text-muted">Ask anything about money, markets and investing</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 bg-[#173322] px-3 py-1.5 rounded-full text-xs text-[#64e67d] font-semibold">
-          <span className="w-2 height-2 w-2 h-2 rounded-full bg-[#64e67d] animate-pulse"></span>
+        <span className="chip bg-mint-soft text-mint">
+          <span className="size-1.5 animate-pulse rounded-full bg-mint" aria-hidden="true" />
           Online
-        </div>
-      </div>
+        </span>
+      </header>
 
-      {/* Main chat layout */}
-      <div className="flex-1 flex flex-col md:flex-row gap-5 overflow-hidden">
-        {/* Left Column: Chat History */}
-        <div className="flex-1 flex flex-col bg-[#121212] border border-[#2b2b2b] rounded-2xl overflow-hidden relative">
-          
-          {/* Scrollable Message Box */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-sm transition-all duration-200 ${
-                    msg.role === 'user'
-                      ? 'bg-gradient-to-r from-[#2579e9] to-[#5267ea] text-white rounded-br-none'
-                      : 'bg-[#1b1b1b] border border-[#2b2b2b] text-[#eee] rounded-bl-none'
-                  }`}
-                >
-                  {/* Coach Identifier */}
-                  {msg.role === 'model' && (
-                    <div className="text-[10px] uppercase font-bold text-[#ff426c] mb-1 tracking-wider">
-                      Coach
+      {/* ── Chat + sidebar ──────────────────────────────────────────── */}
+      <div className="flex min-h-0 flex-1 gap-5 pt-4">
+        <section className="card flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-4 lg:p-5">
+            <div className="flex flex-col gap-4">
+              {messages.map((msg, i) => {
+                const isUser = msg.role === 'user';
+                return (
+                  <div key={i} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm lg:max-w-[78%] ${
+                        isUser
+                          ? 'rounded-br-md bg-coin text-coin-ink'
+                          : 'rounded-bl-md border border-border bg-elevated text-foreground'
+                      }`}
+                    >
+                      {!isUser && (
+                        <p className="mb-1.5 font-display text-[10px] font-bold uppercase tracking-[0.16em] text-coin">
+                          Coach
+                        </p>
+                      )}
+                      <MessageBody text={msg.text} />
                     </div>
-                  )}
-                  <div className="space-y-1">{renderMessageText(msg.text)}</div>
-                </div>
-              </div>
-            ))}
-
-            {/* Loading / Typing Indicator */}
-            {loading && (
-              <div className="flex justify-start">
-                <div className="bg-[#1b1b1b] border border-[#2b2b2b] max-w-[80%] rounded-2xl rounded-bl-none px-4 py-3 text-sm text-[#888] flex items-center gap-2">
-                  <div className="text-[10px] uppercase font-bold text-[#ff426c] tracking-wider mr-1">
-                    Coach
                   </div>
-                  <span className="flex space-x-1 items-center">
-                    <span className="w-1.5 h-1.5 bg-[#888] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                    <span className="w-1.5 h-1.5 bg-[#888] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                    <span className="w-1.5 h-1.5 bg-[#888] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                  </span>
+                );
+              })}
+
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="flex items-center gap-2.5 rounded-2xl rounded-bl-md border border-border bg-elevated px-4 py-3.5">
+                    <span className="font-display text-[10px] font-bold uppercase tracking-[0.16em] text-coin">
+                      Coach
+                    </span>
+                    <span className="flex items-center gap-1">
+                      {[0, 150, 300].map((delay) => (
+                        <span
+                          key={delay}
+                          className="size-1.5 animate-bounce rounded-full bg-muted"
+                          style={{ animationDelay: `${delay}ms` }}
+                        />
+                      ))}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Error Message */}
-            {error && (
-              <div className="p-3 bg-[#451d29] border border-[#ff5574] text-[#ff5574] rounded-xl text-xs">
-                ⚠️ {error}
-              </div>
-            )}
-            
-            <div ref={chatEndRef} />
+              {error && <Alert>{error}</Alert>}
+              <div ref={chatEndRef} />
+            </div>
           </div>
 
-          {/* Input Panel */}
-          <div className="p-4 border-t border-[#2b2b2b] bg-[#161616] flex gap-3">
-            <textarea
-              className="flex-1 bg-[#090909] border border-[#2b2b2b] rounded-xl p-3 text-sm text-[#eee] outline-none placeholder-[#555] resize-none focus:border-[#ff3f69] focus:ring-1 focus:ring-[#ff3f69] transition-all"
-              rows={2}
-              placeholder="Ask anything (e.g. How does inflation work?)..."
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={loading}
-            />
-            <button
-              onClick={() => handleSend()}
-              disabled={loading || !inputText.trim()}
-              className="px-5 bg-gradient-to-r from-[#ff315d] to-[#a653fc] hover:brightness-110 active:brightness-95 text-white font-semibold rounded-xl text-sm transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-            >
-              Send 🚀
-            </button>
-          </div>
-        </div>
+          {/* Suggestion chips — mobile only, and only before the first question */}
+          {messages.length === 1 && (
+            <div className="shrink-0 border-t border-border px-3.5 py-3 xl:hidden">
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {SUGGESTIONS.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => handleSend(suggestion)}
+                    disabled={loading}
+                    className="shrink-0 rounded-full border border-border bg-elevated px-3.5 py-2 text-xs text-muted transition-colors hover:border-coin/45 hover:text-foreground"
+                  >
+                    {suggestion.length > 38 ? `${suggestion.slice(0, 36)}…` : suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-        {/* Right Column: Suggested Topics / Prompts */}
-        <div className="w-full md:w-[320px] flex flex-col gap-4">
-          <div className="p-4 bg-gradient-to-br from-[#1b1b1b] to-[#101010] border border-[#2b2b2b] rounded-2xl">
-            <h3 className="text-xs uppercase font-bold tracking-wider text-[#ff426c] mb-3">
-              💡 Suggested Questions
-            </h3>
-            <p className="text-xs text-[#888] mb-4">
-              Click any of the questions below to ask your AI Financial Coach instantly:
+          {/* Composer */}
+          <div className="shrink-0 border-t border-border bg-elevated/60 p-3.5">
+            <div className="flex items-end gap-2.5">
+              <textarea
+                className="field max-h-32 min-h-[46px] flex-1 resize-none py-3"
+                rows={1}
+                placeholder="Ask anything — e.g. how does inflation work?"
+                aria-label="Message the AI coach"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={() => handleSend()}
+                disabled={loading || !inputText.trim()}
+                aria-label="Send message"
+                className="btn-coin size-[46px] shrink-0 px-0"
+              >
+                <SendHorizontal className="size-[18px]" aria-hidden="true" />
+              </button>
+            </div>
+            <p className="mt-2 px-1 text-[10px] text-muted">
+              Educational guidance only — not financial advice.
             </p>
-            <div className="space-y-2.5">
-              {suggestions.map((suggestion, index) => (
+          </div>
+        </section>
+
+        {/* ── Prompt sidebar (desktop) ──────────────────────────────── */}
+        <aside className="hidden w-[300px] shrink-0 flex-col gap-4 overflow-y-auto xl:flex">
+          <div className="card p-4">
+            <h2 className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.14em] text-coin">
+              <Sparkles className="size-3.5" aria-hidden="true" />
+              Try asking
+            </h2>
+            <div className="mt-3.5 flex flex-col gap-2.5">
+              {SUGGESTIONS.map((suggestion) => (
                 <button
-                  key={index}
+                  key={suggestion}
+                  type="button"
                   onClick={() => handleSend(suggestion)}
                   disabled={loading}
-                  className="w-full text-left p-3 rounded-xl border border-[#2c2c2c] bg-[#151515] hover:bg-[#202020] text-xs text-[#ccc] hover:text-white transition-all cursor-pointer leading-normal"
+                  className="rounded-xl border border-border bg-elevated px-3.5 py-2.5 text-left text-xs leading-relaxed text-muted transition-all duration-150 hover:-translate-y-0.5 hover:border-coin/45 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
                 >
                   {suggestion}
                 </button>
@@ -207,22 +229,21 @@ export default function Coach() {
             </div>
           </div>
 
-          <div className="p-4 bg-gradient-to-br from-[#1b1b1b] to-[#101010] border border-[#2b2b2b] rounded-2xl text-xs text-[#888] space-y-2">
-            <h3 className="text-xs uppercase font-bold tracking-wider text-white mb-2">
-              📖 Tip
-            </h3>
-            <p>
-              Your Coach is configured to guide you step-by-step. Feel free to follow up on complex answers:
+          <div className="card p-4">
+            <h2 className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.14em] text-foreground">
+              <Lightbulb className="size-3.5 text-coin" aria-hidden="true" />
+              Tip
+            </h2>
+            <p className="mt-3 text-xs leading-relaxed text-muted">
+              Your Coach explains things step by step. Follow up on anything that stays fuzzy:
             </p>
-            <p className="italic text-[#aaa]">
-              "Can you give me another analogy for that?"
-            </p>
-            <p className="italic text-[#aaa]">
-              "How does that relate to a mutual fund?"
-            </p>
+            <ul className="mt-2.5 flex flex-col gap-1.5 text-xs italic leading-relaxed text-muted/80">
+              <li>&ldquo;Can you give me another analogy?&rdquo;</li>
+              <li>&ldquo;How does that relate to a mutual fund?&rdquo;</li>
+            </ul>
           </div>
-        </div>
+        </aside>
       </div>
-    </div>
+    </main>
   );
 }

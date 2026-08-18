@@ -1,14 +1,88 @@
 import { useEffect, useRef, useState } from 'react';
+import {
+  Check,
+  Landmark,
+  Loader2,
+  Search,
+  SearchX,
+  TrendingUp,
+  X,
+} from 'lucide-react';
 import client from '../api/client';
+import { Alert, LoadingScreen, PageHeader } from '../components/ui';
+
+function SecurityRow({ security, onSelect, isSelected }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(security)}
+      aria-pressed={isSelected}
+      className={`flex w-full items-center justify-between gap-4 rounded-xl border bg-surface px-4 py-3 text-left transition-all duration-150 ${
+        isSelected
+          ? 'border-coin bg-coin-soft/40'
+          : 'border-border hover:-translate-y-0.5 hover:border-coin/45'
+      }`}
+    >
+      <span className="min-w-0">
+        <span className="block truncate font-semibold text-foreground">{security.name}</span>
+        <span className="mt-0.5 block truncate text-[11px] text-muted">{security.symbol}</span>
+      </span>
+
+      <span
+        className={`shrink-0 font-display text-sm font-bold ${
+          isSelected ? 'text-coin' : 'text-foreground'
+        }`}
+      >
+        {isSelected ? (
+          <span className="flex items-center gap-1.5">
+            <Check className="size-4" aria-hidden="true" />
+            Selected
+          </span>
+        ) : security.price == null ? (
+          'Select'
+        ) : (
+          `₹${security.price}`
+        )}
+      </span>
+    </button>
+  );
+}
+
+function SecurityGroup({ icon: Icon, title, items, onSelect, selected }) {
+  if (!items.length) return null;
+  return (
+    <section className="mt-6 first:mt-0">
+      <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
+        <Icon className="size-3.5 text-coin" aria-hidden="true" />
+        {title}
+        <span className="rounded-full bg-elevated px-2 py-0.5 text-[10px] text-muted">
+          {items.length}
+        </span>
+      </h2>
+      <div className="mt-3 grid gap-2">
+        {items.map((s) => (
+          <SecurityRow
+            key={s.symbol}
+            security={s}
+            onSelect={onSelect}
+            isSelected={selected?.symbol === s.symbol}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default function Market() {
   const [securities, setSecurities] = useState(null);
   const [selected, setSelected] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState('');
+  const [isError, setIsError] = useState(false);
   const [search, setSearch] = useState('');
   const [searching, setSearching] = useState(false);
   const [loadingQuote, setLoadingQuote] = useState(false);
+  const [trading, setTrading] = useState(false);
   const orderPanelRef = useRef(null);
 
   // Load the default catalogue immediately; debounce only typed searches.
@@ -17,54 +91,47 @@ export default function Market() {
       fetchSecurities('');
       return undefined;
     }
-
-    const timer = setTimeout(() => {
-      fetchSecurities(search);
-    }, 400);
-
+    const timer = setTimeout(() => fetchSecurities(search), 400);
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Load only the selected security's quote. This lets the market list render
-  // immediately instead of waiting for a request per visible item.
+  // Load only the selected security's quote so the list renders immediately.
   useEffect(() => {
-    if (!selected?.symbol) return;
+    if (!selected?.symbol) return undefined;
 
     let cancelled = false;
     async function fetchQuote() {
       try {
         setLoadingQuote(true);
         const res = await client.get('/market/quote/', {
-          params: {
-            symbol: selected.symbol,
-            asset_type: selected.asset_type,
-          },
+          params: { symbol: selected.symbol, asset_type: selected.asset_type },
         });
         if (!cancelled) {
-          setSelected((current) => (
-            current?.symbol === selected.symbol
-              ? { ...current, price: res.data.price }
-              : current
-          ));
+          setSelected((current) =>
+            current?.symbol === selected.symbol ? { ...current, price: res.data.price } : current,
+          );
         }
-      } catch (err) {
-        if (!cancelled) setMessage('Could not load the current quote.');
+      } catch {
+        if (!cancelled) {
+          setIsError(true);
+          setMessage('Could not load the current quote.');
+        }
       } finally {
         if (!cancelled) setLoadingQuote(false);
       }
     }
 
     fetchQuote();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selected?.symbol, selected?.asset_type, selected?.quoteRequestId]);
 
   function selectSecurity(security) {
     setMessage('');
-    // A request ID makes selecting the same asset retry a quote after a
-    // transient network/provider failure.
+    setIsError(false);
+    // A request ID lets re-selecting the same asset retry a failed quote.
     setSelected({ ...security, price: null, quoteRequestId: Date.now() });
-    // On compact layouts the order panel sits below the results, so take the
-    // learner straight to it after they choose an asset.
     window.setTimeout(() => {
       orderPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 0);
@@ -73,14 +140,13 @@ export default function Market() {
   async function fetchSecurities(query) {
     try {
       setSearching(true);
-
       const res = await client.get('/market/securities/', {
         params: query ? { search: query } : {},
       });
-
       setSecurities(res.data);
     } catch (err) {
       console.error('Failed to load securities:', err);
+      setIsError(true);
       setMessage('Failed to load market data.');
     } finally {
       setSearching(false);
@@ -89,7 +155,8 @@ export default function Market() {
 
   async function trade(txnType) {
     setMessage('');
-
+    setIsError(false);
+    setTrading(true);
     try {
       const res = await client.post('/portfolio/trade/', {
         symbol: selected.symbol,
@@ -97,239 +164,170 @@ export default function Market() {
         txn_type: txnType,
         quantity,
       });
-
       setMessage(`${res.data.detail} at ₹${res.data.price}`);
-
     } catch (err) {
-      setMessage(
-        err?.response?.data?.detail || 'Trade failed.'
-      );
+      setIsError(true);
+      setMessage(err?.response?.data?.detail || 'Trade failed.');
+    } finally {
+      setTrading(false);
     }
   }
 
-  if (!securities) {
-    return <main className="app-page page-loading">Loading market data...</main>;
-  }
+  if (!securities) return <LoadingScreen label="Loading market data…" />;
 
-  const hasResults =
-    securities.stocks.length > 0 ||
-    securities.mutual_funds.length > 0;
+  const hasResults = securities.stocks.length > 0 || securities.mutual_funds.length > 0;
+  const quoteReady = !loadingQuote && selected?.price != null;
+  const estimate = quoteReady ? Number(selected.price) * Number(quantity || 0) : null;
 
   return (
-    <main className="app-page market-page grid grid-cols-3 gap-6">
+    <main className="page">
+      <PageHeader
+        eyebrow="Live catalogue"
+        title="Market"
+        subtitle="Search real stocks and mutual funds, then place a virtual order with practice cash."
+      />
 
-      {/* LEFT SIDE */}
-      <div className="col-span-2">
-
-        <h1 className="text-2xl font-bold mb-4 text-white">
-          Market
-        </h1>
-
-        {/* SEARCH BAR */}
-        <div className="relative mb-6">
-
-          <div className="flex items-center bg-slate-800/70 border border-white/10 rounded-xl px-4 py-3">
-
-            <span className="text-slate-400 mr-3">
-              🔍
-            </span>
-
+      <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1.8fr)_minmax(280px,0.85fr)]">
+        {/* ── Catalogue ───────────────────────────────────────────────── */}
+        <div className="min-w-0">
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 focus-within:border-coin">
+            <Search className="size-4 shrink-0 text-muted" aria-hidden="true" />
             <input
-              type="text"
+              type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search the live stock or mutual-fund catalogue..."
-              className="bg-transparent outline-none text-white w-full placeholder-slate-500"
+              placeholder="Search a company, fund or scheme…"
+              aria-label="Search stocks and mutual funds"
+              className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted/60"
             />
-
-            {search && (
+            {searching && (
+              <Loader2 className="size-4 shrink-0 animate-spin text-coin" aria-hidden="true" />
+            )}
+            {search && !searching && (
               <button
+                type="button"
                 onClick={() => setSearch('')}
-                className="text-slate-400 hover:text-white ml-2"
+                aria-label="Clear search"
+                className="shrink-0 rounded-md p-0.5 text-muted transition-colors hover:text-foreground"
               >
-                ✕
+                <X className="size-4" aria-hidden="true" />
               </button>
             )}
-
           </div>
 
-          {searching && (
-            <p className="text-xs text-slate-500 mt-2">
-              Searching...
-            </p>
+          {!hasResults && search && !searching ? (
+            <div className="card mt-5 px-4 py-12 text-center">
+              <SearchX className="mx-auto size-7 text-muted" aria-hidden="true" />
+              <p className="mt-3 font-display text-base font-bold text-foreground">
+                No matches found
+              </p>
+              <p className="mt-1.5 text-sm text-muted">Try a company, fund, or scheme name.</p>
+            </div>
+          ) : (
+            <div className="mt-5">
+              <SecurityGroup
+                icon={TrendingUp}
+                title="Stocks"
+                items={securities.stocks}
+                onSelect={selectSecurity}
+                selected={selected}
+              />
+              <SecurityGroup
+                icon={Landmark}
+                title="Mutual funds"
+                items={securities.mutual_funds}
+                onSelect={selectSecurity}
+                selected={selected}
+              />
+            </div>
           )}
-
         </div>
 
-        {/* NO RESULTS */}
-        {!hasResults && search && !searching && (
-          <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6 text-center">
-            <p className="text-slate-300">
-              No stocks or mutual funds found.
+        {/* ── Order ticket ────────────────────────────────────────────── */}
+        <aside
+          ref={orderPanelRef}
+          className="card h-fit scroll-mt-6 p-5 lg:sticky lg:top-6"
+        >
+          <h2 className="font-display text-base font-bold text-foreground">Place an order</h2>
+
+          {!selected ? (
+            <p className="mt-2.5 text-sm leading-relaxed text-muted">
+              Pick a stock or mutual fund from the catalogue to build your order.
             </p>
+          ) : (
+            <>
+              <div className="mt-4 rounded-xl border border-border bg-elevated p-3.5">
+                <p className="font-semibold leading-snug text-foreground">{selected.name}</p>
+                <p className="mt-1 text-[11px] text-muted">{selected.symbol}</p>
+                <p className="mt-3 font-display text-xl font-extrabold text-coin">
+                  {quoteReady ? `₹${selected.price}` : 'Loading quote…'}
+                  {quoteReady && (
+                    <span className="ml-1 font-sans text-[11px] font-medium text-muted">
+                      / unit
+                    </span>
+                  )}
+                </p>
+              </div>
 
-            <p className="text-sm text-slate-500 mt-1">
-              Try a company, fund, or scheme name.
-            </p>
-          </div>
-        )}
-
-        {/* STOCKS */}
-        {securities.stocks.length > 0 && (
-          <>
-            <h2 className="text-sm uppercase tracking-wide text-slate-400 mb-2">
-              Stocks
-            </h2>
-
-            <div className="grid gap-2 mb-6">
-
-              {securities.stocks.map((s) => (
-                <SecurityRow
-                  key={s.symbol}
-                  s={s}
-                  onSelect={selectSecurity}
-                  selected={selected}
+              <label className="mt-4 flex flex-col gap-2">
+                <span className="font-display text-xs font-bold uppercase tracking-wider text-muted">
+                  Quantity
+                </span>
+                <input
+                  type="number"
+                  min="0.0001"
+                  step="any"
+                  className="field"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
                 />
-              ))}
+              </label>
 
-            </div>
-          </>
-        )}
+              <div className="mt-3.5 flex items-center justify-between rounded-xl bg-elevated px-3.5 py-2.5">
+                <span className="text-xs text-muted">Estimated total</span>
+                <span className="font-display text-sm font-bold text-foreground">
+                  {estimate == null
+                    ? '—'
+                    : `₹${estimate.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`}
+                </span>
+              </div>
 
-        {/* MUTUAL FUNDS */}
-        {securities.mutual_funds.length > 0 && (
-          <>
-            <h2 className="text-sm uppercase tracking-wide text-slate-400 mb-2">
-              Mutual Funds
-            </h2>
+              <div className="mt-4 flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => trade('buy')}
+                  disabled={!quoteReady || trading}
+                  className="btn-mint flex-1"
+                >
+                  Buy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => trade('sell')}
+                  disabled={!quoteReady || trading}
+                  className="btn-coral flex-1"
+                >
+                  Sell
+                </button>
+              </div>
 
-            <div className="grid gap-2">
-
-              {securities.mutual_funds.map((s) => (
-                <SecurityRow
-                  key={s.symbol}
-                  s={s}
-                  onSelect={selectSecurity}
-                  selected={selected}
-                />
-              ))}
-
-            </div>
-          </>
-        )}
-
+              {message &&
+                (isError ? (
+                  <div className="mt-3.5">
+                    <Alert>{message}</Alert>
+                  </div>
+                ) : (
+                  <p
+                    role="status"
+                    className="mt-3.5 rounded-xl border border-mint/30 bg-mint-soft/60 px-3.5 py-2.5 text-xs font-medium leading-relaxed text-mint"
+                  >
+                    {message}
+                  </p>
+                ))}
+            </>
+          )}
+        </aside>
       </div>
-
-      {/* ORDER PANEL */}
-      <div ref={orderPanelRef} className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl shadow-xl p-5 h-fit sticky top-6 scroll-mt-6">
-
-        <h2 className="font-semibold mb-3 text-white">
-          Place an order
-        </h2>
-
-        {!selected ? (
-
-          <p className="text-sm text-slate-400">
-            Select a stock or mutual fund to trade.
-          </p>
-
-        ) : (
-
-          <>
-
-            <p className="font-medium text-white">
-              {selected.name}
-            </p>
-
-            <p className="text-sm text-slate-400 mb-3">
-              {loadingQuote || selected.price == null
-                ? 'Loading current quote...'
-                : `₹${selected.price} / unit`}
-            </p>
-
-            <input
-              type="number"
-              min="0.0001"
-              step="any"
-              className="bg-slate-900/50 border border-white/20 rounded px-3 py-2 w-full mb-3 text-white focus:outline-none focus:border-emerald-500"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-            />
-
-            <div className="flex gap-2">
-
-              <button
-                onClick={() => trade('buy')}
-                disabled={loadingQuote || selected.price == null}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded py-2 font-medium"
-              >
-                Buy
-              </button>
-
-              <button
-                onClick={() => trade('sell')}
-                disabled={loadingQuote || selected.price == null}
-                className="flex-1 bg-red-600 hover:bg-red-500 text-white rounded py-2 font-medium"
-              >
-                Sell
-              </button>
-
-            </div>
-
-            {message && (
-              <p className="text-sm mt-3 text-slate-300" role="status">
-                {message}
-              </p>
-            )}
-
-          </>
-
-        )}
-
-      </div>
-
     </main>
-  );
-}
-
-
-function SecurityRow({ s, onSelect, selected }) {
-
-  const isSelected =
-    selected?.symbol === s.symbol;
-
-  return (
-
-    <div
-      className={`text-left bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-lg shadow-lg px-4 py-3 flex justify-between items-center border-2 w-full ${
-        isSelected
-          ? 'border-emerald-500'
-          : 'border-transparent'
-      }`}
-    >
-      <button onClick={() => onSelect(s)} className="text-left flex-1 min-w-0">
-
-        <p className="font-medium text-white">
-          {s.name}
-        </p>
-
-        <p className="text-xs text-slate-400">
-          {s.symbol}
-        </p>
-
-      </button>
-
-      {isSelected ? (
-        <button onClick={() => onSelect(s)} className="ml-4 shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md px-3 py-2 text-sm font-medium">
-          Place order →
-        </button>
-      ) : (
-        <button onClick={() => onSelect(s)} className="ml-4 shrink-0 font-semibold text-white text-sm">
-          {s.price == null ? 'Select' : `₹${s.price}`}
-        </button>
-      )}
-
-    </div>
-
   );
 }
